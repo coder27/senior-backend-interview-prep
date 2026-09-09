@@ -19,18 +19,18 @@ Most system design prep material still teaches the 2023 version of the interview
 
 ## What's in here
 
-[`system-design.md`](system-design.md) is the actual content — 19 prompts split into two sections:
+[`system-design/`](system-design/) — 23 prompts, **one file each**, split into two sections:
 
-- **AI Production Systems** (8 prompts) — RAG, LLM serving infrastructure, production agent guardrails, AI observability, multi-model routing, evaluation pipelines. This is the part that doesn't already exist elsewhere in this form.
-- **Classical Distributed Systems** (11 prompts) — the evergreen fundamentals (rate limiters, caches, job schedulers, payments APIs). Still worth practicing, not what makes this repo different from the alternatives below.
+- **[AI Production Systems](system-design/README.md#ai-production-systems)** (8 prompts) — RAG, LLM serving infrastructure, production agent guardrails, AI observability, multi-model routing, evaluation pipelines. Each one explains the actual mechanism with a diagram, not just a checklist of buzzwords. This is the part that doesn't already exist elsewhere in this form.
+- **[Classical Distributed Systems](system-design/README.md#classical-distributed-systems)** (15 prompts) — the evergreen fundamentals (rate limiters, caches, job schedulers, payments APIs), as a lighter checklist-plus-follow-up treatment. Still worth practicing, not what makes this repo different from the alternatives below.
 
-Every prompt has a **"what a strong answer covers"** checklist — concrete things, not "discuss trade-offs" — and a hidden **likely follow-up** curveball. Design the system first, then reveal it and see if your design survives.
+Every prompt has a **"what a strong answer covers"** section and a hidden **likely follow-up** curveball. Design the system first, then reveal it and see if your design survives.
 
 This repo intentionally does **not** include a DSA problem set or a behavioral question bank — those already exist, done well, elsewhere. See [`resources.md`](resources.md).
 
 ## How to use it
 
-Pick one prompt. Give it the full ~75 minutes: requirements, high-level design, deep dives, trade-offs, cost. Then reveal the follow-up and think through how your design actually holds up. That adaptation is the skill being graded in 2026 — not the initial design.
+Start with [`system-design/README.md`](system-design/README.md) and pick one prompt — one file, read on its own. Give it the full ~75 minutes: requirements, high-level design, deep dives, trade-offs, cost. Then reveal the follow-up and think through how your design actually holds up. That adaptation is the skill being graded in 2026 — not the initial design.
 
 ## License
 
