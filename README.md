@@ -1,37 +1,42 @@
 # Senior Backend System Design Prep — AI Production Era (2026)
 
-Most system design prep material still teaches the 2023 version of the interview. This repo is narrowly focused on what actually changed by 2026, backed by sources, not vibes.
+Most system design prep material still teaches the 2023 version of the interview. This repo covers what changed by 2026 — specifically that production AI system design now shows up in general senior backend loops, not just ML-specialist ones — and tries to back the technical claims with primary sources instead of secondhand blog commentary.
 
-## What changed
+## What changed, and why
 
-**The bar moved from "does it scale" to "does it survive production."** A few years ago, sketching a load balancer, a database, and a cache with some scaling talk could pass a strong loop. That's no longer sufficient — interviewers now grade cost reasoning and operational judgment explicitly, not as a bonus. "We'd just add more servers" reads as a red flag, not an answer. ([source](https://designgurus.substack.com/p/system-design-interviews-changed))
+A few years ago, sketching a load balancer, a database, and a cache, with some scaling talk, could clear a strong loop. That bar moved. Interviewers now grade cost reasoning and operational judgment explicitly rather than treating them as extra credit — "we'd add more servers" reads as a gap, not an answer ([DesignGurus, 2026](https://designgurus.substack.com/p/system-design-interviews-changed)). The harder part to prep for: interviewers have gotten better at probing past a rehearsed answer, and will deliberately shift a requirement partway through specifically to see whether you adapt or just defend the design you walked in with ([source](https://designgurus.substack.com/p/what-changed-in-system-design-interviews)).
 
-**AI/LLM infrastructure design is now mainstream for backend roles, not ML-specialist-only.** A year or two ago, "design a system that serves an LLM" was reserved for ML engineering loops. By 2026 it's a standard category in general senior backend interviews, alongside classic distributed systems, real-time systems, and data pipelines. You're expected to reason about chunking, embeddings, vector stores, retrieval, and LLM-serving trade-offs the way you'd reason about a cache or a queue — as a normal part of the toolkit, not a specialty. ([source](https://www.tryexponent.com/blog/system-design-interview-guide), [source](https://www.systemdesignhandbook.com/blog/ai-system-design-interview-questions/))
+The bigger shift is scope. "Design a system that serves an LLM" used to be an ML-track question. By 2026 it's ordinary in general senior backend interviews, next to rate limiters and job schedulers ([Exponent, 2026](https://www.tryexponent.com/blog/system-design-interview-guide); [System Design Handbook](https://www.systemdesignhandbook.com/blog/ai-system-design-interview-questions/)). That's the actual reason this repo exists — most prep material hasn't caught up to that, and the parts that have tend to stop at "here's what RAG is" rather than the production concerns that follow.
 
-**Production AI systems have their own hard-won lessons, and they're now fair game:**
-- Continuous (iteration-level) batching over static batching is typically a 4-8x throughput difference in LLM serving — a genuinely large, non-obvious lever. ([source](https://tianpan.co/blog/2026-04-09-continuous-batching-llm-inference))
-- VRAM, not raw compute, is usually the actual bottleneck in serving — driven by model size, quantization level, and KV cache overhead, not FLOPs. ([source](https://www.sitepoint.com/the-2026-definitive-guide-to-running-local-llms-in-production/))
-- Observability is the piece most candidates skip, and it's treated as foundational now: if you can't trace and roll back an agent's behavior, it doesn't pass. A real production stack has three distinct layers — infra metrics, LLM telemetry, and quality evaluation. ([source](https://valuestreamai.com/blog/ai-monitoring-in-production-guide-2026))
-- Agents that don't know when to **stop** cause more production incidents than agents that fail outright — termination logic is a real, deceptively hard design problem, not an afterthought. ([source](https://medium.com/@dewasheesh.rana/agentic-ai-in-production-designing-autonomous-multi-agent-systems-with-guardrails-2026-guide-a5a1c8461772))
-- Guardrails belong at the gateway/platform layer for consistent enforcement, not scattered per-service — and cost controls (hard limits that stop an agent vs. soft limits that just downgrade it) are the first guardrail to design in, not the last one bolted on. ([source](https://www.getmaxim.ai/articles/the-complete-ai-guardrails-implementation-guide-for-2026/))
+A few of the specific, checkable facts behind the AI Production Systems section:
 
-**Interviewers deliberately shift requirements mid-interview.** When every candidate walks in with the same memorized architecture, interviewers stop getting signal from the initial design — so they probe with follow-ups that change the constraints partway through, specifically to see whether you adapt or defend. ([source](https://designgurus.substack.com/p/what-changed-in-system-design-interviews))
+- **Continuous batching is a large, well-documented lever, not folklore.** Iteration-level scheduling — letting a new request join a batch mid-flight instead of waiting for the whole batch to finish — is what the Orca paper introduced, reporting a 36.9x throughput gain over FasterTransformer at matched latency ([Yu et al., OSDI 2022](https://www.usenix.org/system/files/osdi22-yu.pdf)). vLLM's PagedAttention builds on that same idea to fix KV-cache fragmentation, reporting 2-4x further gains over Orca and FasterTransformer ([Kwon et al., SOSP 2023](https://arxiv.org/abs/2309.06180)).
+- **Prefill and decode are different workloads, and serving them identically leaves performance on the table.** Prefill is compute-bound; decode is memory-bandwidth-bound. DistServe separates them onto different GPU pools specifically to stop them from interfering with each other ([Zhong et al., 2024](https://arxiv.org/abs/2401.09670)).
+- **Guardrails work better as a separate pass than as the same model policing itself.** Anthropic's own agent-building guidance recommends a second model instance to screen inputs/outputs rather than asking one model to both answer and guard itself ([Anthropic Engineering](https://www.anthropic.com/engineering/building-effective-agents)).
+- **LLM observability has an actual emerging standard**, not just ad hoc logging — OpenTelemetry's GenAI semantic conventions define shared attributes for token usage, cost, and agent/tool steps, adopted across AWS, GCP, Azure, and Datadog ([OpenTelemetry, 2026](https://opentelemetry.io/blog/2026/genai-observability/)).
+- **"Treat evals as infrastructure, not a launch checklist"** is OpenAI's own stated best practice for their evaluation framework — run on every change, not just before shipping ([OpenAI](https://developers.openai.com/api/docs/guides/evaluation-best-practices); [openai/evals](https://github.com/openai/evals)).
+
+None of that is exotic. It's what teams actually running these systems have published about running them, which is a different thing from a listicle summarizing what "AI system design" means.
 
 ## What's in here
 
-[`system-design/`](system-design/) — 23 prompts, **one file each**, split into two sections:
+[`system-design/`](system-design/) — 23 prompts, one file each, in two sections:
 
-- **[AI Production Systems](system-design/README.md#ai-production-systems)** (8 prompts) — RAG, LLM serving infrastructure, production agent guardrails, AI observability, multi-model routing, evaluation pipelines. Each one explains the actual mechanism with a diagram, not just a checklist of buzzwords. This is the part that doesn't already exist elsewhere in this form.
-- **[Classical Distributed Systems](system-design/README.md#classical-distributed-systems)** (15 prompts) — the evergreen fundamentals (rate limiters, caches, job schedulers, payments APIs), as a lighter checklist-plus-follow-up treatment. Still worth practicing, not what makes this repo different from the alternatives below.
+- **[AI Production Systems](system-design/README.md#ai-production-systems)** (8 files) — RAG, LLM serving infrastructure, production agent guardrails, AI observability, multi-model routing, evaluation pipelines. Each one walks through the actual mechanism, cites where the claim comes from, and includes a diagram. This is the reason to be here.
+- **[Classical Distributed Systems](system-design/README.md#classical-distributed-systems)** (15 files) — the evergreen fundamentals: rate limiters, caches, job schedulers, payments APIs. Worth practicing. Not the differentiator — see [`resources.md`](resources.md) for repos that go deeper on these specifically.
 
-Every prompt has a **"what a strong answer covers"** section and a hidden **likely follow-up** curveball. Design the system first, then reveal it and see if your design survives.
+Every prompt ends with a hidden follow-up: design the system, then reveal it and see whether your answer survives the curveball. That's closer to what's actually being graded than the initial design is.
 
-This repo intentionally does **not** include a DSA problem set or a behavioral question bank — those already exist, done well, elsewhere. See [`resources.md`](resources.md).
+Deliberately not included: a DSA problem set or a behavioral question bank. Both already exist, done well, by other people — linked in [`resources.md`](resources.md) instead of duplicated here.
 
 ## How to use it
 
-Start with [`system-design/README.md`](system-design/README.md) and pick one prompt — one file, read on its own. Give it the full ~75 minutes: requirements, high-level design, deep dives, trade-offs, cost. Then reveal the follow-up and think through how your design actually holds up. That adaptation is the skill being graded in 2026 — not the initial design.
+Start at [`system-design/README.md`](system-design/README.md). Pick one file. Give it the real ~75 minutes — requirements, high-level design, deep dives, cost, failure modes — before you look at the follow-up.
+
+## A note on how this was made
+
+Researched and written with Claude's help, not hand-typed from scratch — the primary-source links above are exactly what I used to check the technical claims before they went in, and I'd rather you verify them than take the repo's word for it. If something in here is wrong or has gone stale, open an issue or a PR.
 
 ## License
 
-MIT — use it, fork it, adapt it. Corrections and additions welcome via PR.
+MIT — use it, fork it, adapt it.

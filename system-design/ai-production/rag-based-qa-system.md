@@ -29,17 +29,17 @@ flowchart TD
     end
 ```
 
-**Chunking** is a real design decision, not a detail. Fixed-size chunks (e.g. 500 tokens) are simple and predictable but can cut a sentence or a table in half. Semantic chunking (splitting at natural section/paragraph boundaries) preserves meaning better but produces uneven chunk sizes that complicate downstream retrieval scoring. There's no universally correct choice — it depends on how structured your source documents are.
+Chunking looks like a preprocessing detail and isn't one. Fixed-size chunks (say, 500 tokens) are simple and predictable, but they'll happily cut a sentence or a table in half without knowing it. Semantic chunking — splitting at natural section or paragraph boundaries — preserves meaning better, at the cost of uneven chunk sizes that complicate how you score retrieval later. Which one's right depends entirely on how structured the source documents actually are, which is exactly the kind of thing worth asking about instead of assuming.
 
-**Embeddings** turn each chunk into a vector such that semantically similar text ends up numerically close. The embedding model is a real dependency: if you switch models later, every chunk in the store needs to be re-embedded, which is a real cost at scale, not a config change.
+A chunk loses context the moment it's separated from the document it came from — a chunk that says "the deadline is next Friday" means nothing on its own. Anthropic's contextual retrieval work addresses this directly: prepend a short, chunk-specific explanation of what the chunk is from before embedding it, and retrieval failures drop by up to 67% when combined with reranking ([Anthropic Engineering](https://www.anthropic.com/engineering/contextual-retrieval)). That's a large, measured number for what sounds like a small change, which is exactly why it's worth naming specifically rather than gesturing at "good chunking."
 
-**The vector store** has to actually scale past a demo. A few thousand vectors work fine with brute-force comparison; a few million need approximate nearest-neighbor indexing (HNSW, IVF), which trades a small amount of recall for a large amount of speed. This is also where partitioning/sharding becomes a real question once one machine can't hold the index.
+The embedding model itself is a dependency you're stuck with, not a config value. Change it later and every chunk in the store needs to be re-embedded — a real, sometimes significant cost at scale, not a redeploy.
 
-**The "nothing relevant" path is not an edge case — it's core to the design.** A system that always retrieves *something* and hands it to the model will produce confident, wrong answers when the real answer simply isn't in the document set. A well-designed retriever has an explicit relevance threshold and an explicit "I don't have information about that" path, rather than always forcing a top-k result into the prompt.
+Vector stores need to actually survive past the demo stage. Brute-force comparison is fine at a few thousand vectors and falls over well before a few million, where approximate nearest-neighbor indexing (HNSW, IVF) becomes necessary — trading a small amount of recall for a large amount of speed. That's also the point where partitioning the index across machines stops being optional.
 
-**Freshness** matters if the underlying documents change. Re-embedding and re-indexing the entire corpus on every change doesn't scale; a real design incrementally re-indexes only what changed, and has a defined staleness window for anything not yet re-indexed.
+The most commonly missing piece: what happens when nothing relevant comes back. A system that always retrieves *something* and hands it to the model will generate a confident, wrong answer the moment the real answer simply isn't in the corpus. An explicit relevance threshold, with an explicit "I don't have information about that" path, has to be part of the design from the start — not a fallback added after the first embarrassing wrong answer.
 
-**Evaluation** is the part most designs skip entirely. Without a retrieval-quality metric (did the right chunk actually get retrieved for a known question) you have no way to know a change — a new embedding model, a re-chunking strategy — made things better or worse until users complain.
+Two things are easy to skip and both matter at scale: freshness (re-indexing only what changed, rather than re-embedding the whole corpus every time something updates) and evaluation (a retrieval-quality metric that tells you whether a change — a new embedding model, a different chunking strategy — actually helped, instead of finding out from user complaints).
 
 ## The practice prompt
 
